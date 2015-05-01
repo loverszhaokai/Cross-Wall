@@ -1,0 +1,852 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html dir='ltr' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/2005/gml/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
+<head>
+<meta content='text/html; charset=UTF-8' http-equiv='Content-Type'/>
+<script type="text/javascript">(function() { var b=window,f="chrome",g="tick",k="jstiming";(function(){function d(a){this.t={};this.tick=function(a,d,c){var e=void 0!=c?c:(new Date).getTime();this.t[a]=[e,d];if(void 0==c)try{b.console.timeStamp("CSI/"+a)}catch(h){}};this[g]("start",null,a)}var a;b.performance&&(a=b.performance.timing);var n=a?new d(a.responseStart):new d;b.jstiming={Timer:d,load:n};if(a){var c=a.navigationStart,h=a.responseStart;0<c&&h>=c&&(b[k].srt=h-c)}if(a){var e=b[k].load;0<c&&h>=c&&(e[g]("_wtsrt",void 0,c),e[g]("wtsrt_","_wtsrt",h),e[g]("tbsd_","wtsrt_"))}try{a=null,
+b[f]&&b[f].csi&&(a=Math.floor(b[f].csi().pageT),e&&0<c&&(e[g]("_tbnd",void 0,b[f].csi().startE),e[g]("tbnd_","_tbnd",c))),null==a&&b.gtbExternal&&(a=b.gtbExternal.pageT()),null==a&&b.external&&(a=b.external.pageT,e&&0<c&&(e[g]("_tbnd",void 0,b.external.startE),e[g]("tbnd_","_tbnd",c))),a&&(b[k].pt=a)}catch(p){}})();b.tickAboveFold=function(d){var a=0;if(d.offsetParent){do a+=d.offsetTop;while(d=d.offsetParent)}d=a;750>=d&&b[k].load[g]("aft")};var l=!1;function m(){l||(l=!0,b[k].load[g]("firstScrollTime"))}b.addEventListener?b.addEventListener("scroll",m,!1):b.attachEvent("onscroll",m);
+ })();</script>
+<meta content='blogger' name='generator'/>
+<link href='http://lcamtuf.blogspot.ru/favicon.ico' rel='icon' type='image/x-icon'/>
+<link href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html' rel='canonical'/>
+<link rel="alternate" type="application/atom+xml" title="lcamtuf&#39;s blog - Atom" href="http://lcamtuf.blogspot.com/feeds/posts/default" />
+<link rel="alternate" type="application/rss+xml" title="lcamtuf&#39;s blog - RSS" href="http://lcamtuf.blogspot.com/feeds/posts/default?alt=rss" />
+<link rel="service.post" type="application/atom+xml" title="lcamtuf&#39;s blog - Atom" href="http://www.blogger.com/feeds/383549007228220941/posts/default" />
+
+<link rel="alternate" type="application/atom+xml" title="lcamtuf&#39;s blog - Atom" href="http://lcamtuf.blogspot.com/feeds/9002736326250250918/comments/default" />
+<!--[if IE]> <script> (function() { var html5 = ("abbr,article,aside,audio,canvas,datalist,details," + "figure,footer,header,hgroup,mark,menu,meter,nav,output," + "progress,section,time,video").split(','); for (var i = 0; i < html5.length; i++) { document.createElement(html5[i]); } try { document.execCommand('BackgroundImageCache', false, true); } catch(e) {} })(); </script> <![endif]-->
+<title>lcamtuf's blog: Bash bug: the other two RCEs, or how we chipped away at the original fix (CVE-2014-6277 and '78)</title>
+<link type='text/css' rel='stylesheet' href='https://www.blogger.com/static/v1/widgets/1012706540-widget_css_bundle.css' />
+<link type='text/css' rel='stylesheet' href='https://www.blogger.com/dyn-css/authorization.css?targetBlogID=383549007228220941&zx=f53cf3ae-6e48-40d1-bc53-2f772a60fe63' />
+<style id='page-skin-1' type='text/css'><!--
+/*
+* Blogger Template Style
+*
+* Jellyfish
+* by Jason Sutter
+*/
+/*
+* Variable definitions
+* --------------------
+<Variable name="mainBgColor" description="Page Background Color"
+type="color" default="#ffffff"  />
+<Variable name="mainTextColor" description="Text Color"
+type="color" default="#111111" />
+<Variable name="titleBgColor" description="Blog Title Background Color"
+type="color" default="#eeeeee" />
+<Variable name="titleColor" description="Blog Title Color"
+type="color" default="#16a3c2"/>
+<Variable name="descriptionBgColor" description="Blog Description Background Color"
+type="color" default="#ffffff" />
+<Variable name="descriptionColor" description="Blog Description Color"
+type="color" default="#acb877" />
+<Variable name="dateHeaderColor" description="Date Header Color"
+type="color" default="#333333" />
+<Variable name="postTitleColor" description="Post Title Color"
+type="color" default="#000000" />
+<Variable name="postFooterColor" description="Post Footer Color"
+type="color" default="#444444" />
+<Variable name="mainLinkColor" description="Link Color"
+type="color" default="#b4445c" />
+<Variable name="sidebarTitleColor" description="Sidebar Title Color"
+type="color" default="#ffc069" />
+<Variable name="sidebarLinkColor" description="Sidebar Link Color"
+type="color" default="#999999" />
+<Variable name="bodyFont" description="Text Font"
+type="font" default="normal normal 100% Lucida Grande, Verdana, Arial, Helvetica, Sans-Serif" />
+<Variable name="titleFont" description="Blog Title Font"
+type="font" default="normal bold 340% Helvetica Neue Black Condensed, Arial Black,Arial, Sans-Serif" />
+<Variable name="descriptionFont" description="Blog Description Font"
+type="font" default="normal normal 80% Lucida Grande,Verdana, Arial, Sans-serif" />
+<Variable name="startSide" description="Start side in blog language"
+type="automatic" default="left">
+<Variable name="endSide" description="End side in blog language"
+type="automatic" default="right">
+*/
+body {
+margin: 0px;
+padding: 0px;
+background: #ffffff;
+color: #111111;
+font: normal normal 100% Trebuchet, Trebuchet MS, Arial, sans-serif;
+}
+a.navlink {
+text-decoration: none;
+}
+a.navlink:hover {
+text-decoration: underline;
+}
+a:link,
+a:visited,
+a:active {
+color: #006699;
+}
+a img {
+border: 0;
+}
+@media all {
+div#main-wrapper {
+float: left;
+width: 65%;
+padding-top: 20px;
+padding-right: 1em;
+padding-bottom: 0;
+padding-left: 0;
+word-wrap: break-word; /* fix for long text breaking sidebar float in IE */
+overflow: hidden;     /* fix for long non-text content breaking IE sidebar float */
+}
+div#sidebar-wrapper {
+margin: 0px;
+text-align: left;
+}
+div#sidebar {
+width: 32%;
+float: right;
+word-wrap: break-word; /* fix for long text breaking sidebar float in IE */
+overflow: hidden;     /* fix for long non-text content breaking IE sidebar float */
+}
+}
+#content-wrapper {
+margin-right: 1em;
+margin-left: 1em;
+}
+@media handheld {
+div#main-wrapper {
+float:none;
+width:90%;
+}
+div#sidebar-wrapper {
+margin-left:5%;
+}
+}
+h1,h2,h3,h4 {
+padding:0px;
+margin:0px;
+}
+#header {
+padding-top:7px;
+padding-right:0px;
+padding-bottom:20px;
+padding-left:0px;
+margin-top:23px;
+margin-right:0px;
+margin-bottom:0px;
+margin-left:0px;
+border-top:1px solid #eeeeee;
+background: #ffffff;
+color: #acb877;
+}
+h1 a:visited {
+text-decoration: none;
+color: #215670;
+}
+h1 {
+padding-left: 3%;
+padding-top: 20px;
+border-bottom: dotted 1px #000000;
+border-top: solid 6px #215670;
+color: #215670;
+background: #eeeeee;
+text-transform:lowercase;
+font: normal bold 323% Verdana, sans-serif;
+line-height: 0.8em;
+}
+.description {
+padding:0px;
+margin-top:1em;
+margin-right:12%;
+margin-bottom:0px;
+margin-left:5%;
+color: #acb877;
+background:transparent;
+text-transform:uppercase;
+font: normal normal 80% Lucida Grande,Verdana, Arial, Sans-serif;
+}
+h3 {
+color: #32527A;
+font-weight:normal;
+font-size: 150%;
+margin-top: 0.3ex;
+margin-bottom: 0.3ex;
+}
+h3.post-title a {
+color: #32527A;
+font-weight: bold;
+text-decoration: none;
+}
+h3.post-title a:hover {
+text-decoration: underline;
+}
+.Blog h2.date-header {
+margin-top:10px;
+margin-right:0px;
+margin-bottom:0px;
+margin-left:0px;
+color: #999999;
+font-size:70%;
+text-align: left;
+text-transform:none;
+font-weight: bold;
+}
+#sidebar .widget {
+margin-top: 0px;
+margin-right: 0px;
+margin-bottom: 33px;
+margin-left: 0px;
+padding: 0px;
+font-size: 95%;
+text-align: right;
+}
+#sidebar ul {
+list-style-type: none;
+margin-top: 0;
+}
+#sidebar li {
+margin: 0px;
+padding: 0px;
+list-style-type: none;
+}
+@media all {
+.widget h2 {
+color: #ffc069;
+font-size: 240%;
+text-align:right;
+text-transform:lowercase;;
+}
+}
+@media handheld {
+.widget h2 {
+text-align:left;
+}
+#sidebar {
+text-align:left;
+}
+}
+.post {
+margin-top:0px;
+margin-right:0px;
+margin-bottom:30px;
+margin-left:0px;
+font-size:90%;
+line-height: 1.5;
+}
+.post strong {
+font-weight: bold;
+}
+#sidebar a:link,
+#sidebar a:visited {
+color: #999999;
+}
+#sidebar a:hover {
+text-decoration: none;
+}
+pre,code,strike {
+color: #666666;
+}
+.post-footer {
+padding: 0px;
+margin: 0px;
+color: #444444;
+font-size: 80%;
+}
+.post-footer a {
+text-decoration:none;
+}
+.post-footer a:hover {
+text-decoration:underline;
+}
+#comments {
+padding-top: 2px;
+padding-right: 0px;
+padding-bottom: 2px;
+padding-left: 5px;
+font-weight: normal;
+font-size: 80%;
+color: crimson;
+}
+.comment-author {
+margin-top: 20px;
+}
+.comment-body {
+margin-top: 10px;
+font-size: 100%;
+}
+.comment-footer {
+margin-right: 10px;
+display: inline;
+padding: 0px;
+color: #444444;
+font-size: 80%;
+font-family: Lucida Grande,MS Sans Serif,Lucida Sans Unicode,Verdana,Geneva,Lucida,Arial,Helvetica,Sans-Serif;
+}
+.deleted-comment {
+font-style:italic;
+color:gray;
+}
+.comment-link {
+margin-left: .6em;
+}
+.profile-img {
+margin-top: 0;
+margin-right: 0;
+margin-bottom: 5px;
+margin-left: 5px;
+float: right;
+}
+.Profile dd {
+margin: 0;
+padding: 0;
+}
+.BlogArchive #ArchiveList {
+float: right;
+}
+.widget-content {
+margin-top: 0.5em;
+}
+@media handheld {
+.Profile img {
+float:none;
+}
+.Profile {
+text-align:left;
+}
+}
+.feed-links {
+clear: both;
+line-height: 2.5em;
+}
+#blog-pager-newer-link {
+float: left;
+}
+#blog-pager-older-link {
+float: right;
+}
+#blog-pager {
+text-align: center;
+}
+.clear {
+clear: both;
+}
+/** Tweaks for subscribe widget */
+.widget-content .subscribe-wrapper {
+float: right;
+clear: right;
+margin: .2em;
+font-family: Arial,Sans-Serif;
+}
+/** Tweaks for layout editor mode */
+body#layout #outer-wrapper {
+margin-top: 10px;
+}
+body#layout #main-wrapper,
+body#layout #header {
+margin-top: 0;
+padding-top: 0;
+}
+
+--></style>
+<script type="text/javascript">var a="indexOf",b="&m=1",e="(^|&)m=",f="?",g="?m=1";function h(){var c=window.location.href,d=c.split(f);switch(d.length){case 1:return c+g;case 2:return 0<=d[1].search(e)?null:c+b;default:return null}}var k=navigator.userAgent;if(-1!=k[a]("Mobile")&&-1!=k[a]("WebKit")&&-1==k[a]("iPad")||-1!=k[a]("Opera Mini")||-1!=k[a]("IEMobile")){var l=h();l&&window.location.replace(l)};
+</script><script type="text/javascript">
+if (window.jstiming) window.jstiming.load.tick('headEnd');
+</script></head>
+<body>
+<div class='navbar section' id='navbar'><div class='widget Navbar' id='Navbar1'><script type="text/javascript">
+    function setAttributeOnload(object, attribute, val) {
+      if(window.addEventListener) {
+        window.addEventListener('load',
+          function(){ object[attribute] = val; }, false);
+      } else {
+        window.attachEvent('onload', function(){ object[attribute] = val; });
+      }
+    }
+  </script>
+<div id="navbar-iframe-container"></div>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+<script type="text/javascript">
+        gapi.load("gapi.iframes:gapi.iframes.style.bubble", function() {
+          if (gapi.iframes && gapi.iframes.getContext) {
+            gapi.iframes.getContext().openChild({
+                url: 'https://www.blogger.com/navbar.g?targetBlogID\075383549007228220941\46blogName\75lcamtuf\47s+blog\46publishMode\75PUBLISH_MODE_BLOGSPOT\46navbarType\75BLACK\46layoutType\75LAYOUTS\46searchRoot\75http://lcamtuf.blogspot.com/search\46blogLocale\75en\46v\0752\46homepageUrl\75http://lcamtuf.blogspot.com/\46targetPostID\759002736326250250918\46blogPostOrPageUrl\75http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html\46vt\0755042571362842027577',
+                where: document.getElementById("navbar-iframe-container"),
+                id: "navbar-iframe"
+            });
+          }
+        });
+      </script><script type="text/javascript">
+(function() {
+var script = document.createElement('script');
+script.type = 'text/javascript';
+script.src = '//pagead2.googlesyndication.com/pagead/js/google_top_exp.js';
+var head = document.getElementsByTagName('head')[0];
+if (head) {
+head.appendChild(script);
+}})();
+</script>
+</div></div>
+<div id='outer-wrapper'><div id='wrap2'>
+<!-- skip links for text browsers -->
+<span id='skiplinks' style='display:none;'>
+<a href='#main'>skip to main </a> |
+      <a href='#sidebar'>skip to sidebar</a>
+</span>
+<div style='align: right; margin: 0 1em 0 1em; padding: 0 1em 0 1em; border: 1px solid #215670; float: right; background-color: white; font-size: 80%'>
+This is a personal blog. My other stuff: 
+<a class='navlink' href='http://lcamtuf.coredump.cx/tangled/' target='_blank'>book</a> | 
+<a class='navlink' href='http://lcamtuf.coredump.cx/' target='_blank'>home page</a> | 
+<a class='navlink' href='http://twitter.com/lcamtuf' target='_blank'>Twitter</a> | 
+
+<a class='navlink' href='http://lcamtuf.coredump.cx/guerrilla_cnc1.shtml' target='_blank'>CNC robotics</a> | 
+<a class='navlink' href='http://lcamtuf.coredump.cx/electronics/' target='_blank'>electronics</a>
+</div>
+<div id='header-wrapper'>
+<div class='header section' id='header'><div class='widget Header' id='Header1'>
+<div id='header-inner'>
+<div class='titlewrapper'>
+<h1 class='title'>
+<a href='http://lcamtuf.blogspot.ru/'>lcamtuf's blog</a>
+</h1>
+</div>
+<div class='descriptionwrapper'>
+<p class='description'><span>
+</span></p>
+</div>
+</div>
+</div></div>
+</div>
+<div id='content-wrapper'>
+<div id='crosscol-wrapper' style='text-align:center'>
+<div class='crosscol section' id='crosscol'></div>
+</div>
+<div id='main-wrapper'>
+<div class='main section' id='main'><div class='widget Blog' id='Blog1'>
+<div class='blog-posts hfeed'>
+<!-- google_ad_section_start(name=default) -->
+
+          <div class="date-outer">
+        
+<h2 class='date-header'><span>October 01, 2014</span></h2>
+
+          <div class="date-posts">
+        
+<div class='post-outer'>
+<div class='post hentry'>
+<a name='9002736326250250918'></a>
+<h3 class='post-title entry-title'>
+<a href='http://lcamtuf.blogspot.ru/2014/10/bash-bug-how-we-finally-cracked.html'>Bash bug: the other two RCEs, or how we chipped away at the original fix (CVE-2014-6277 and '78)</a>
+</h3>
+<div class='post-header'>
+<div class='post-header-line-1'></div>
+</div>
+<div class='post-body entry-content'>
+The patch that implements a prefix-based way to mitigate vulnerabilities in bash function exports has been <a href='http://www.openwall.com/lists/oss-security/2014/09/25/13'>out since last week</a> and has been already picked up by most Linux vendors (plus by Apple). So, here's a quick overview of the key developments along the way, including two really interesting things: proof-of-concept test cases for two serious, previously non-public RCE bugs tracked as CVE-2014-6277 and CVE-2014-6278.
+
+<p></p>
+
+<i><b>NOTE: If you or your distro maintainers have already deployed Florian's patch, there is no reason for alarm - you are almost certainly not vulnerable to attacks. If you do not have this patch, and instead relied only on the original CVE-2014-6271 fix, you probably need to act now. See <a href='http://lcamtuf.blogspot.com/2014/09/bash-bug-apply-unofficial-patch-now.html'>this entry</a> for a convenient test case and other tips.</b></i>
+
+<p></p>
+
+Still here? Good. If you need a refresher, the basic principles of the underlying function export functionality, and the impact of the original bash bug (CVE-2014-6271), are discussed in <a href='http://lcamtuf.blogspot.com/2014/09/quick-notes-about-bash-bug-its-impact.html'>this blog post</a>. If you have read the earlier post, the original attack disclosed by Stephane Chazelas should be very easy to understand:
+
+<p></p>
+<code>HTTP_COOKIE='() { 0; }; <font color='crimson'>echo hi mom;</font>' bash -c :</code>
+<p></p>
+In essence, the internal parser invoked by bash to process the specially encoded function definitions passed around in environmental variables had a small problem: it continued parsing the code past the end of the function definition itself - and at that point, flat out executed whatever instructions it came across, just as it would do in a normal bash script. Given that the value of certain environmental variables can be controlled by remote attackers in quite a few common settings, this opened up a good chunk of the Internet to attacks.
+
+<p></p>
+
+The original vulnerability was reported privately and kept under embargo for roughly two weeks to develop a fairly conservative fix that modified the parser to bail out in a timely manner and do not parse any trailing commands. As soon as the embargo was lifted, we all found out about the bug and scrambled to deploy fixes. At the same time, a good chunk of the security community reacted with surprise and disbelief that bash is keen to dispatch the contents of environmental variables to a fairly complex syntax parser - so we started poking around.
+
+<p></p>
+
+Tavis was the quickest: he found that you can convince the parser to keep looking for a file name for output redirection past the boundary between the untrusted string accepted from the environment and the actual body of the program that bash is being asked to execute (CVE-2014-7169). His original test case can be simplified at:
+
+<p></p>
+<code>HTTP_COOKIE='() { function a <font color='crimson'>a>\</font>' bash -c echo</code>
+<p></p>
+
+This example would create an empty file named "echo", instead of executing the requested command. Tavis' finding meant that you would be at risk of remote code execution in situations where attacker-controlled environmental variables are mixed with sanitized, attacker-controlled command-line parameters passed to calls such as <code>system()</code> or <code>popen()</code>. For example, you'd be in trouble if you were doing this in a web app:
+
+<p></p>
+<code>system("echo '"+ <font color=crimson>sanitized_string_without_quotes</font> + "' | /some/trusted/program");
+</code>
+<p></p>
+
+...because the attacker could convince bash to skip over the "echo" command and execute the command given in the second parameter, which happens to be a sanitized string (albeit probably with no ability to specify parameters). On the flip side, this is a fairly specific if not entirely exotic coding pattern - and contrary to some of the initial reports, the bug probably wasn't exploitable in a much more general way.
+
+<p></p>
+
+Chet, the maintainer of bash, started working on a fix to close this specific parsing issue, and released it <a href='http://ftp.gnu.org/gnu/bash/bash-4.3-patches/bash43-026'>soon thereafter</a>.
+
+<p></p>
+
+On the same day, Todd Sabin and Florian Weimer have independently bumped into a static array overflow in the parser (CVE-2014-7186). The bug manifested in what seemed to be a non-exploitable crash, trying to dereference a non-attacker-controlled pointer at an address that "by design" should fall well above the end of heap - but was enough to cast even more doubt on the robustness of the underlying code. The test for this problem was pretty simple - you just needed a sequence of here-documents that overflowed a static array, say:
+
+<p></p>
+<code>HTTP_COOKIE='() { 0 <font color='crimson'>&lt;&lt;a &lt;&lt;b &lt;&lt;c &lt;&lt;d &lt;&lt;e &lt;&lt;f &lt;&lt;g &lt;&lt;h &lt;&lt;i &lt;&lt;j &lt;&lt;k &lt;&lt;l &lt;&lt;m;</font> }' bash -c :</code>
+<p></p>
+
+Florian also bumped into an off-by-one issue with loop parsing (CVE-2014-7187); the proof-of-concept function definition for this is a trivial <code>for</code> loop nested 129 levels deep, but the effect can be only observed under memory access diagnostics tools, and its practical significance is probably low. Nevertheless, all these revelations prompted him to start working on an unofficial but far more comprehensive patch that would largely shield the parser from untrusted strings in normally encountered variables present in the environment.
+
+<p></p>
+
+In parallel to Tavis' and Florian's work, I set up a very straightforward fuzzing job with <a href='https://code.google.com/p/american-fuzzy-lop/'>american fuzzy lop</a>. I seeded it with a rudimentary function definition:
+
+<xmp>() { foo() { foo; }; >bar; }
+</xmp>
+
+...and simply let it run with a minimalistic wrapper that took the test case generated by the fuzzer, put it in a variable, and then called <code>execve()</code> to invoke bash.
+
+<p></p>
+
+Although the fuzzer had no clue about the syntax of shell programs, it had the benefit of being able to identify and isolate interesting syntax based on coverage signals, deriving around 1,000 other distinctive test cases from the starting one while "instinctively" knowing not to mess with the essential "() {" prefix. For the first few hours, it kept hitting only the redirect issue originally reported by Todd and the file-creation issue discovered by Tavis - but soon thereafter, it spewed out a new crash illustrated by this snippet of code (<b>CVE-2014-6277</b>):
+
+<p></p>
+<code>HTTP_COOKIE='() { x() { _; }; x() { _; } <font color=crimson>&lt;&lt;a</font>; }' bash -c :</code>
+<p></p>
+
+This proved to be a very straightforward use of uninitialized memory: it hit a code path in <code>make_redirect()</code> where one field in a newly-allocated <code>REDIR</code> struct - <code>here_doc_eof</code> - would not be set to any specific value, yet would be treated as a valid pointer later on (somewhere in <code>copy_redirect()</code>).
+
+<p></p>
+
+Now, if bash is compiled with both <code>--enable-bash-malloc</code> and <code>--enable-mem-scramble</code>, the memory returned to <code>make_redirect()</code> by <code>xmalloc()</code> will be set to <code>0xdf</code>, making the pointer always resolve to <code>0xdfdfdfdf</code>, and thus rendering the prospect of exploitation far more speculative (essentially depending on whether the stack or any other memory region can be grown by the attacker to overlap with this address). That said, on a good majority of Linux distros, these flags are disabled, and you can trivially get bash to dereference a pointer that is entirely within attacker's control:
+
+<p></p>
+<code>HTTP_COOKIE="() { x() { _; }; x() { _; } <font color=crimson>&lt;&lt;`perl -e '{print "A"x1000}'`</font>; }" bash -c :<br>
+bash[25662]: segfault at <font color='crimson'>41414141</font> ip 00190d96 sp bfbe6354 error 4 in libc-2.12.so[110000+191000]
+</code>
+<p></p>
+
+The actual fault happens because of an attempt to copy <code>here_doc_eof</code> to a newly-allocated buffer using a C macro that expands to the following code:
+
+<p></p>
+<code>strcpy(xmalloc(1 + strlen(<font color=crimson>redirect->here_doc_eof</font>)), (<font color=crimson>redirect->here_doc_eof</font>))</code>
+<p></p>
+
+This appears to be exploitable in at least one way: if <code>here_doc_eof</code> is chosen by the attacker to point in the vicinity of the current stack pointer, the apparent contents of the string - and therefore its length - may change between stack-based calls to <code>xmalloc()</code> and <code>strcpy()</code> as a natural consequence of an attempt to pass parameters and create local variables. Such a mid-macro switch will result in an out-of-bounds write to the newly-allocated memory.
+
+<p></p>
+
+A simple conceptual illustration of this attack vector would be:
+
+<xmp>char* result;
+int len_alloced;
+
+main(int argc, char** argv) {
+
+  /* The offset will be system- and compiler-specific */;
+  char* ptr = &ptr - 9;
+
+  result = strcpy (malloc(100 + (len_alloced = strlen(ptr))), ptr);
+
+  printf("requested memory = %d\n"
+         "copied text = %d\n", len_alloced + 1, strlen(result) + 1);
+
+}
+</xmp>
+
+When compiled with the -O2 flag used for bash, on one test system, this produces:
+
+<p></p>
+<code>requested memory = 2<br>
+copied text = <font color=crimson>28</font>
+</code><p></p>
+
+Of course, the result will vary from system to system, but the general consequences of this should be fairly evident. The issue is also made worse by the fact that only relatively few distributions were building bash as a position-independent executable that could be fully protected by ASLR.
+
+<p></p>
+
+(In addition to this vector, there is also a location in <code>dispose_cmd.c</code> that calls <code>free()</code> on the pointer under some circumstances, but I haven't really really spent a lot of time trying to develop a functioning exploit for the '77 bug for reasons that should be evident in the text that follows... well, just about now.)
+
+<p></p>
+
+It has to be said that there is a bit less glamour to such a low-level issue that still requires you to go through some mental gymnastics to be exploited in a portable way. Luckily, the fuzzer kept going, and few hours later, isolated a test case that, after <a href='http://code.google.com/p/tmin/'>minimization</a>, yielded this gem (<b>CVE-2014-6278</b>):
+
+<p></p>
+<code>HTTP_COOKIE='() { _; } >_[$($())] { <font color="crimson">echo hi mom; id;</font> }' bash -c :
+</code>
+<p></p>
+
+I am... actually not entirely sure what happens here. A sequence of nested <code>$...</code> statements within a redirect appears to cause the parser to bail out without properly resetting its state, and puts it in the mood for executing whatever comes next. The test case works as-is with bash 4.2 and 4.3, but not with more ancient releases; this is probably related to changes introduced few years ago in bash 4.2 patch level 12 (<code>xparse_dolparen()</code>), but I have not investigated if earlier versions are patently not vulnerable or simply require different syntax.
+<p></p>
+
+The CVE-2014-6278 payload allows straightforward "put-your-commands-here" remote code execution on systems that are protected only with the original patch - something that we were <a href='http://lcamtuf.blogspot.com/2014/09/bash-bug-apply-unofficial-patch-now.html'>worried about</a> for a while, and what prompted us to <a href='http://www.pcworld.com/article/2688932/improved-patch-tackles-new-shellshock-attack-vectors.html'>ask people to update again</a> over the past few days.
+
+<p></p>
+
+Well, that's it. I kept the technical details of the last two findings embargoed for a while to give people some time to incorporate Florian's patch and avoid the panic associated with the original bug - but at this point, given the scrutiny that the code is under, the ease of discovering the problems with off-the-shelf open-source tools, and the availability of adequate mitigations, the secrecy seems to have outlived its purpose.
+
+<p></p>
+
+Any closing thoughts? Well, I'm not sure there's a particular lesson to be learnt from the entire story. There's perhaps one thing - it would probably have been helpful if the questionable nature of the original patch was spotted by any of the notified vendors during the two-week embargo period. That said, I wasn't privy to these conversations - and hindsight is always 20/20.
+<div style='clear: both;'></div>
+</div>
+<div class='post-footer'>
+<div class='post-footer-line post-footer-line-1'><span class='post-comment-link'>
+</span>
+<span class='post-icons'>
+</span>
+</div>
+<div class='post-footer-line post-footer-line-2'></div>
+<div class='post-footer-line post-footer-line-3'></div>
+</div>
+</div>
+<div class='comments' id='comments'>
+<a name='comments'></a>
+<h4>11 comments:</h4>
+<div class='comments-content'>
+<script async='async' src='//www.blogblog.com/dynamicviews/4224c15c4e7c9321/js/comments.js' type='text/javascript'></script>
+<script type='text/javascript'>
+    (function() {
+      var items = [{'id': '5979153687833863233', 'body': 'Can you make any comment as to where 4.3 u28 fits into this whole situation?  I was under the impression from previous comments here (and elsewhere) that 4.3 u27, posted by Chet this past Saturday after the various redhat updates, resolved all six of the currently-known Bash CVEs (including CVE-2014-7186 and CVE-2014-7187.)  As such, I am surprised to see 4.3 u28 being released, especially with no accompanying updates from redhat since the 26th.  Just trying to figure out how 4.3 u28 fits in and whether it specifically addresses any CVEs, since I had (perhaps incorrectly) surmised that 4.3 u27 resolved/mitigated these various CVEs being discussed.', 'timestamp': '1412201822785', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751412201822785#c5979153687833863233', 'author': {'name': 'Chris', 'profileUrl': 'http://www.blogger.com/profile/17621245117904138662'}, 'displayTime': 'October 01, 2014 3:17 PM', 'deleteclass': 'item-control blog-admin pid-649854387'}, {'id': '967677508277435137', 'body': '4.3.27 does not resolve all known issues, but adopts Florian\46#39;s mitigation that shields the parser from untrusted inputs in normal use cases. The subsequent patch (28) actually eliminates CVE-2014-7186 and CVE-2014-7187, but with patch 27 in place, they do not pose a security risk. Two more to go, probably in patch 29.', 'timestamp': '1412207913134', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751412207913134#c967677508277435137', 'author': {'name': 'Michal Zalewski', 'profileUrl': 'http://www.blogger.com/profile/07964553034419471588'}, 'displayTime': 'October 01, 2014 4:58 PM', 'deleteclass': 'item-control blog-admin pid-1239349174'}, {'id': '7274258578907269219', 'body': 'if you can\46#39;t be totally sure how that beast is doing, I am pretty scared. ', 'timestamp': '1412214638254', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751412214638254#c7274258578907269219', 'author': {'name': 'julien tayon', 'profileUrl': 'http://www.blogger.com/profile/06120175983940571527'}, 'displayTime': 'October 01, 2014 6:50 PM', 'deleteclass': 'item-control blog-admin pid-1045812667'}, {'id': '8296121984357333734', 'parentId': '967677508277435137', 'body': '4.3.28 can resolve all 6 issues ? thanks very much ', 'timestamp': '1412255083245', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751412255083245#c8296121984357333734', 'author': {'name': 'ning Liu', 'profileUrl': 'http://www.blogger.com/profile/12397515067077639085'}, 'displayTime': 'October 02, 2014 6:04 AM', 'deleteclass': 'item-control blog-admin pid-276498392'}, {'id': '1168636859167586583', 'parentId': '967677508277435137', 'body': 'Thanks Michal!  I assume that when you refer to Bash needing to update to resolve two more CVEs, you are referring to CVE-2014-6277 and 6278, correct? ', 'timestamp': '1412255103029', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751412255103029#c1168636859167586583', 'author': {'name': 'Chris', 'profileUrl': 'http://www.blogger.com/profile/17621245117904138662'}, 'displayTime': 'October 02, 2014 6:05 AM', 'deleteclass': 'item-control blog-admin pid-649854387'}, {'id': '8312116213626864674', 'parentId': '7274258578907269219', 'body': 'Exactly. The lesson here, for me, is that I\46#39;m not getting enough bang-for-the-buck out of bash to warrant the security risks. I\46#39;ll simply uninstall it from my systems.', 'timestamp': '1412289805527', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751412289805527#c8312116213626864674', 'author': {'name': 'Richard Neswold', 'profileUrl': 'http://www.blogger.com/profile/12513191030452235173'}, 'displayTime': 'October 02, 2014 3:43 PM', 'deleteclass': 'item-control blog-admin pid-401970256'}, {'id': '8992052139197759474', 'parentId': '967677508277435137', 'body': 'Bash 4.3.29 released on 10.2, I think this can resolve all of 6 issues, hope I am right', 'timestamp': '1412304536860', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751412304536860#c8992052139197759474', 'author': {'name': 'ning Liu', 'profileUrl': 'http://www.blogger.com/profile/12397515067077639085'}, 'displayTime': 'October 02, 2014 7:48 PM', 'deleteclass': 'item-control blog-admin pid-276498392'}, {'id': '5162343933648639829', 'body': 'Hello everyone, just a quick question...  \74br /\76\74br /\76My impression is that scanning applies to known vulnerabilities, fuzzing is for discovering new ones, and the term \46quot;testing\46quot; can apply to both. Is that correct?\74br /\76\74br /\76-Rick', 'timestamp': '1424577239329', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751424577239329#c5162343933648639829', 'author': {'name': 'Rick Karcich', 'profileUrl': 'http://www.blogger.com/profile/11410503547692026880'}, 'displayTime': 'February 21, 2015 7:53 PM', 'deleteclass': 'item-control blog-admin pid-867456114'}, {'id': '773357756009867499', 'parentId': '5162343933648639829', 'body': 'Broadly speaking, sure.', 'timestamp': '1424582828904', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751424582828904#c773357756009867499', 'author': {'name': 'Michal Zalewski', 'profileUrl': 'http://www.blogger.com/profile/07964553034419471588'}, 'displayTime': 'February 21, 2015 9:27 PM', 'deleteclass': 'item-control blog-admin pid-1239349174'}, {'id': '8294397616940202077', 'body': '...here\46#39;s a very recent exploit that appears to be related to Shellshock...  I just think the survivability(undetectability) and evolution of these exploits is remarkable...\74br /\76\74br /\76https://securityblog.redhat.com/2015/02/23/samba-vulnerability-cve-2015-0240/\74br /\76\74br /\76any thots?  thanks-in-advance!\74br /\076', 'timestamp': '1424735080391', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751424735080391#c8294397616940202077', 'author': {'name': 'Rick Karcich', 'profileUrl': 'http://www.blogger.com/profile/11410503547692026880'}, 'displayTime': 'February 23, 2015 3:44 PM', 'deleteclass': 'item-control blog-admin pid-867456114'}, {'id': '3310038926539598114', 'parentId': '8294397616940202077', 'body': 'apologies, in my post above, i meant to link to this article, https://securityblog.redhat.com/2014/09/24/bash-specially-crafted-environment-variables-code-injection-attack/\74br /\76\74br /\76thanks again for any insights...\74br /\76\74br /\076', 'timestamp': '1424781635521', 'permalink': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment\0751424781635521#c3310038926539598114', 'author': {'name': 'Rick Karcich', 'profileUrl': 'http://www.blogger.com/profile/11410503547692026880'}, 'displayTime': 'February 24, 2015 4:40 AM', 'deleteclass': 'item-control blog-admin pid-867456114'}];
+      var msgs = {'loadMore': 'Load more...', 'loading': 'Loading...', 'loaded': 'No more!', 'addComment': 'Add comment', 'reply': 'Reply', 'delete': 'Delete'};
+      var config = {'blogId': '383549007228220941', 'postId': '9002736326250250918', 'feed': 'http://lcamtuf.blogspot.com/feeds/9002736326250250918/comments/default', 'authorName': 'Michal Zalewski', 'authorUrl': 'http://www.blogger.com/profile/07964553034419471588', 'baseUri': 'http://www.blogger.com', 'maxThreadDepth': 2};
+
+// <![CDATA[
+      var cursor = null;
+      if (items && items.length > 0) {
+        cursor = parseInt(items[items.length - 1].timestamp) + 1;
+      }
+
+      var bodyFromEntry = function(entry) {
+        if (entry.gd$extendedProperty) {
+          for (var k in entry.gd$extendedProperty) {
+            if (entry.gd$extendedProperty[k].name == 'blogger.contentRemoved') {
+              return '<span class="deleted-comment">' + entry.content.$t + '</span>';
+            }
+          }
+        }
+        return entry.content.$t;
+      }
+
+      var parse = function(data) {
+        cursor = null;
+        var comments = [];
+        if (data && data.feed && data.feed.entry) {
+          for (var i = 0, entry; entry = data.feed.entry[i]; i++) {
+            var comment = {};
+            // comment ID, parsed out of the original id format
+            var id = /blog-(\d+).post-(\d+)/.exec(entry.id.$t);
+            comment.id = id ? id[2] : null;
+            comment.body = bodyFromEntry(entry);
+            comment.timestamp = Date.parse(entry.published.$t) + '';
+            if (entry.author && entry.author.constructor === Array) {
+              var auth = entry.author[0];
+              if (auth) {
+                comment.author = {
+                  name: (auth.name ? auth.name.$t : undefined),
+                  profileUrl: (auth.uri ? auth.uri.$t : undefined),
+                  avatarUrl: (auth.gd$image ? auth.gd$image.src : undefined)
+                };
+              }
+            }
+            if (entry.link) {
+              if (entry.link[2]) {
+                comment.link = comment.permalink = entry.link[2].href;
+              }
+              if (entry.link[3]) {
+                var pid = /.*comments\/default\/(\d+)\?.*/.exec(entry.link[3].href);
+                if (pid && pid[1]) {
+                  comment.parentId = pid[1];
+                }
+              }
+            }
+            comment.deleteclass = 'item-control blog-admin';
+            if (entry.gd$extendedProperty) {
+              for (var k in entry.gd$extendedProperty) {
+                if (entry.gd$extendedProperty[k].name == 'blogger.itemClass') {
+                  comment.deleteclass += ' ' + entry.gd$extendedProperty[k].value;
+                } else if (entry.gd$extendedProperty[k].name == 'blogger.displayTime') {
+                  comment.displayTime = entry.gd$extendedProperty[k].value;
+                }
+              }
+            }
+            comments.push(comment);
+          }
+        }
+        return comments;
+      };
+
+      var paginator = function(callback) {
+        if (hasMore()) {
+          var url = config.feed + '?alt=json&v=2&orderby=published&reverse=false&max-results=50';
+          if (cursor) {
+            url += '&published-min=' + new Date(cursor).toISOString();
+          }
+          window.bloggercomments = function(data) {
+            var parsed = parse(data);
+            cursor = parsed.length < 50 ? null
+                : parseInt(parsed[parsed.length - 1].timestamp) + 1
+            callback(parsed);
+            window.bloggercomments = null;
+          }
+          url += '&callback=bloggercomments';
+          var script = document.createElement('script');
+          script.type = 'text/javascript';
+          script.src = url;
+          document.getElementsByTagName('head')[0].appendChild(script);
+        }
+      };
+      var hasMore = function() {
+        return !!cursor;
+      };
+      var getMeta = function(key, comment) {
+        if ('iswriter' == key) {
+          var matches = !!comment.author
+              && comment.author.name == config.authorName
+              && comment.author.profileUrl == config.authorUrl;
+          return matches ? 'true' : '';
+        } else if ('deletelink' == key) {
+          return config.baseUri + '/delete-comment.g?blogID='
+               + config.blogId + '&postID=' + comment.id;
+        } else if ('deleteclass' == key) {
+          return comment.deleteclass;
+        }
+        return '';
+      };
+
+      var replybox = null;
+      var replyUrlParts = null;
+      var replyParent = undefined;
+
+      var onReply = function(commentId, domId) {
+        if (replybox == null) {
+          // lazily cache replybox, and adjust to suit this style:
+          replybox = document.getElementById('comment-editor');
+          if (replybox != null) {
+            replybox.height = '250px';
+            replybox.style.display = 'block';
+            replyUrlParts = replybox.src.split('#');
+          }
+        }
+        if (replybox && (commentId !== replyParent)) {
+          document.getElementById(domId).insertBefore(replybox, null);
+          replybox.src = replyUrlParts[0]
+              + (commentId ? '&parentID=' + commentId : '')
+              + '#' + replyUrlParts[1];
+          replyParent = commentId;
+        }
+      };
+
+      var hash = (window.location.hash || '#').substring(1);
+      var startThread, targetComment;
+      if (/^comment-form_/.test(hash)) {
+        startThread = hash.substring('comment-form_'.length);
+      } else if (/^c[0-9]+$/.test(hash)) {
+        targetComment = hash.substring(1);
+      }
+
+      // Configure commenting API:
+      var configJso = {
+        'maxDepth': config.maxThreadDepth
+      };
+      var provider = {
+        'id': config.postId,
+        'data': items,
+        'loadNext': paginator,
+        'hasMore': hasMore,
+        'getMeta': getMeta,
+        'onReply': onReply,
+        'rendered': true,
+        'initComment': targetComment,
+        'initReplyThread': startThread,
+        'config': configJso,
+        'messages': msgs
+      };
+
+      var render = function() {
+        if (window.goog && window.goog.comments) {
+          var holder = document.getElementById('comment-holder');
+          window.goog.comments.render(holder, provider);
+        }
+      };
+
+      // render now, or queue to render when library loads:
+      if (window.goog && window.goog.comments) {
+        render();
+      } else {
+        window.goog = window.goog || {};
+        window.goog.comments = window.goog.comments || {};
+        window.goog.comments.loadQueue = window.goog.comments.loadQueue || [];
+        window.goog.comments.loadQueue.push(render);
+      }
+    })();
+// ]]>
+</script>
+<div id='comment-holder'>
+<div id='bc_0_12C' kind='c'><div id='bc_0_12CT'><div id='bc_0_11T' class='comment-thread' kind='r'  t='0' u='0'><ol id='bc_0_11TB'><li id='bc_0_0B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c5979153687833863233' class='comment-block'><div id='bc_0_0M' class='comment-header' kind='m'><cite class='user'><a rel='nofollow' href='http://www.blogger.com/profile/17621245117904138662'>Chris</a></cite><span class='icon user'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1412201822785#c5979153687833863233'>October 01, 2014 3:17 PM</a></span></div><p id='bc_0_0MC' class='comment-content'>Can you make any comment as to where 4.3 u28 fits into this whole situation?  I was under the impression from previous comments here (and elsewhere) that 4.3 u27, posted by Chet this past Saturday after the various redhat updates, resolved all six of the currently-known Bash CVEs (including CVE-2014-7186 and CVE-2014-7187.)  As such, I am surprised to see 4.3 u28 being released, especially with no accompanying updates from redhat since the 26th.  Just trying to figure out how 4.3 u28 fits in and whether it specifically addresses any CVEs, since I had (perhaps incorrectly) surmised that 4.3 u27 resolved/mitigated these various CVEs being discussed.</p><span id='bc_0_0MN' class='comment-actions secondary-text' kind='m'><a kind='i' href='javascript:;' target='_self' o='r'>Reply</a><span class='item-control blog-admin pid-649854387'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=5979153687833863233'>Delete</a></span></span></div><div id='bc_0_0BR' class='comment-replies'></div><div id='bc_0_0B_box' class='comment-replybox-single'></div></li><li id='bc_0_4B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c967677508277435137' class='comment-block'><div id='bc_0_4M' class='comment-header' kind='m'><cite class='user blog-author'><a rel='nofollow' href='http://www.blogger.com/profile/07964553034419471588'>Michal Zalewski</a></cite><span class='icon user blog-author'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1412207913134#c967677508277435137'>October 01, 2014 4:58 PM</a></span></div><p id='bc_0_4MC' class='comment-content'>4.3.27 does not resolve all known issues, but adopts Florian&#39;s mitigation that shields the parser from untrusted inputs in normal use cases. The subsequent patch (28) actually eliminates CVE-2014-7186 and CVE-2014-7187, but with patch 27 in place, they do not pose a security risk. Two more to go, probably in patch 29.</p><span id='bc_0_4MN' class='comment-actions secondary-text' kind='m'><a kind='i' href='javascript:;' target='_self' o='r'>Reply</a><span class='item-control blog-admin pid-1239349174'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=967677508277435137'>Delete</a></span></span></div><div id='bc_0_4BR' class='comment-replies'><span id='bc_0_4b+seedUH2pD' kind='d'><div id='bc_0_1T' class='comment-thread inline-thread' kind='t'   t='0' u='0'><span id='bc_0_1TT' class='thread-toggle thread-expanded' kind='g'><span id='bc_0_1TA' class='thread-arrow'></span><span id='bc_0_1TN' class='thread-count'><span id='bc_0_1TNT' style='display: none;'></span><span id='bc_0_1TNU' style='display: none;'></span><a href='javascript:;' target='_self'>Replies</a><div id='bc_0_1TD' class='thread-dropContainer thread-expanded'><span class='thread-drop'></span></div></span></span><ol id='bc_0_1TC' class='thread-chrome thread-expanded'><div><li id='bc_0_1B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c8296121984357333734' class='comment-block'><div id='bc_0_1M' class='comment-header' kind='m'><cite class='user'><a rel='nofollow' href='http://www.blogger.com/profile/12397515067077639085'>ning Liu</a></cite><span class='icon user'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1412255083245#c8296121984357333734'>October 02, 2014 6:04 AM</a></span></div><p id='bc_0_1MC' class='comment-content'>4.3.28 can resolve all 6 issues ? thanks very much </p><span id='bc_0_1MN' class='comment-actions secondary-text' kind='m'><span class='item-control blog-admin pid-276498392'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=8296121984357333734'>Delete</a></span></span></div><div id='bc_0_1BR' class='comment-replies'></div><div id='bc_0_1B_box' class='comment-replybox-single'></div></li><li id='bc_0_2B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c1168636859167586583' class='comment-block'><div id='bc_0_2M' class='comment-header' kind='m'><cite class='user'><a rel='nofollow' href='http://www.blogger.com/profile/17621245117904138662'>Chris</a></cite><span class='icon user'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1412255103029#c1168636859167586583'>October 02, 2014 6:05 AM</a></span></div><p id='bc_0_2MC' class='comment-content'>Thanks Michal!  I assume that when you refer to Bash needing to update to resolve two more CVEs, you are referring to CVE-2014-6277 and 6278, correct? </p><span id='bc_0_2MN' class='comment-actions secondary-text' kind='m'><span class='item-control blog-admin pid-649854387'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=1168636859167586583'>Delete</a></span></span></div><div id='bc_0_2BR' class='comment-replies'></div><div id='bc_0_2B_box' class='comment-replybox-single'></div></li><li id='bc_0_3B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c8992052139197759474' class='comment-block'><div id='bc_0_3M' class='comment-header' kind='m'><cite class='user'><a rel='nofollow' href='http://www.blogger.com/profile/12397515067077639085'>ning Liu</a></cite><span class='icon user'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1412304536860#c8992052139197759474'>October 02, 2014 7:48 PM</a></span></div><p id='bc_0_3MC' class='comment-content'>Bash 4.3.29 released on 10.2, I think this can resolve all of 6 issues, hope I am right</p><span id='bc_0_3MN' class='comment-actions secondary-text' kind='m'><span class='item-control blog-admin pid-276498392'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=8992052139197759474'>Delete</a></span></span></div><div id='bc_0_3BR' class='comment-replies'></div><div id='bc_0_3B_box' class='comment-replybox-single'></div></li></div><div id='bc_0_1I' class='continue' kind='ci'><a href='javascript:;' target='_self'>Reply</a></div></ol><div id='bc_0_1T_box' class='comment-replybox-thread'></div></div></span></div><div id='bc_0_4B_box' class='comment-replybox-single'></div></li><li id='bc_0_6B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c7274258578907269219' class='comment-block'><div id='bc_0_6M' class='comment-header' kind='m'><cite class='user'><a rel='nofollow' href='http://www.blogger.com/profile/06120175983940571527'>julien tayon</a></cite><span class='icon user'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1412214638254#c7274258578907269219'>October 01, 2014 6:50 PM</a></span></div><p id='bc_0_6MC' class='comment-content'>if you can&#39;t be totally sure how that beast is doing, I am pretty scared. </p><span id='bc_0_6MN' class='comment-actions secondary-text' kind='m'><a kind='i' href='javascript:;' target='_self' o='r'>Reply</a><span class='item-control blog-admin pid-1045812667'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=7274258578907269219'>Delete</a></span></span></div><div id='bc_0_6BR' class='comment-replies'><span id='bc_0_6b+seedUH2rD' kind='d'><div id='bc_0_5T' class='comment-thread inline-thread' kind='t'   t='0' u='0'><span id='bc_0_5TT' class='thread-toggle thread-expanded' kind='g'><span id='bc_0_5TA' class='thread-arrow'></span><span id='bc_0_5TN' class='thread-count'><span id='bc_0_5TNT' style='display: none;'></span><span id='bc_0_5TNU' style='display: none;'></span><a href='javascript:;' target='_self'>Replies</a><div id='bc_0_5TD' class='thread-dropContainer thread-expanded'><span class='thread-drop'></span></div></span></span><ol id='bc_0_5TC' class='thread-chrome thread-expanded'><div><li id='bc_0_5B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c8312116213626864674' class='comment-block'><div id='bc_0_5M' class='comment-header' kind='m'><cite class='user'><a rel='nofollow' href='http://www.blogger.com/profile/12513191030452235173'>Richard Neswold</a></cite><span class='icon user'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1412289805527#c8312116213626864674'>October 02, 2014 3:43 PM</a></span></div><p id='bc_0_5MC' class='comment-content'>Exactly. The lesson here, for me, is that I&#39;m not getting enough bang-for-the-buck out of bash to warrant the security risks. I&#39;ll simply uninstall it from my systems.</p><span id='bc_0_5MN' class='comment-actions secondary-text' kind='m'><span class='item-control blog-admin pid-401970256'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=8312116213626864674'>Delete</a></span></span></div><div id='bc_0_5BR' class='comment-replies'></div><div id='bc_0_5B_box' class='comment-replybox-single'></div></li></div><div id='bc_0_5I' class='continue' kind='ci'><a href='javascript:;' target='_self'>Reply</a></div></ol><div id='bc_0_5T_box' class='comment-replybox-thread'></div></div></span></div><div id='bc_0_6B_box' class='comment-replybox-single'></div></li><li id='bc_0_8B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c5162343933648639829' class='comment-block'><div id='bc_0_8M' class='comment-header' kind='m'><cite class='user'><a rel='nofollow' href='http://www.blogger.com/profile/11410503547692026880'>Rick Karcich</a></cite><span class='icon user'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1424577239329#c5162343933648639829'>February 21, 2015 7:53 PM</a></span></div><p id='bc_0_8MC' class='comment-content'>Hello everyone, just a quick question...  <br /><br />My impression is that scanning applies to known vulnerabilities, fuzzing is for discovering new ones, and the term &quot;testing&quot; can apply to both. Is that correct?<br /><br />-Rick</p><span id='bc_0_8MN' class='comment-actions secondary-text' kind='m'><a kind='i' href='javascript:;' target='_self' o='r'>Reply</a><span class='item-control blog-admin pid-867456114'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=5162343933648639829'>Delete</a></span></span></div><div id='bc_0_8BR' class='comment-replies'><span id='bc_0_8b+seedUH2uD' kind='d'><div id='bc_0_7T' class='comment-thread inline-thread' kind='t'   t='0' u='0'><span id='bc_0_7TT' class='thread-toggle thread-expanded' kind='g'><span id='bc_0_7TA' class='thread-arrow'></span><span id='bc_0_7TN' class='thread-count'><span id='bc_0_7TNT' style='display: none;'></span><span id='bc_0_7TNU' style='display: none;'></span><a href='javascript:;' target='_self'>Replies</a><div id='bc_0_7TD' class='thread-dropContainer thread-expanded'><span class='thread-drop'></span></div></span></span><ol id='bc_0_7TC' class='thread-chrome thread-expanded'><div><li id='bc_0_7B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c773357756009867499' class='comment-block'><div id='bc_0_7M' class='comment-header' kind='m'><cite class='user blog-author'><a rel='nofollow' href='http://www.blogger.com/profile/07964553034419471588'>Michal Zalewski</a></cite><span class='icon user blog-author'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1424582828904#c773357756009867499'>February 21, 2015 9:27 PM</a></span></div><p id='bc_0_7MC' class='comment-content'>Broadly speaking, sure.</p><span id='bc_0_7MN' class='comment-actions secondary-text' kind='m'><span class='item-control blog-admin pid-1239349174'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=773357756009867499'>Delete</a></span></span></div><div id='bc_0_7BR' class='comment-replies'></div><div id='bc_0_7B_box' class='comment-replybox-single'></div></li></div><div id='bc_0_7I' class='continue' kind='ci'><a href='javascript:;' target='_self'>Reply</a></div></ol><div id='bc_0_7T_box' class='comment-replybox-thread'></div></div></span></div><div id='bc_0_8B_box' class='comment-replybox-single'></div></li><li id='bc_0_10B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c8294397616940202077' class='comment-block'><div id='bc_0_10M' class='comment-header' kind='m'><cite class='user'><a rel='nofollow' href='http://www.blogger.com/profile/11410503547692026880'>Rick Karcich</a></cite><span class='icon user'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1424735080391#c8294397616940202077'>February 23, 2015 3:44 PM</a></span></div><p id='bc_0_10MC' class='comment-content'>...here&#39;s a very recent exploit that appears to be related to Shellshock...  I just think the survivability(undetectability) and evolution of these exploits is remarkable...<br /><br />https://securityblog.redhat.com/2015/02/23/samba-vulnerability-cve-2015-0240/<br /><br />any thots?  thanks-in-advance!<br /></p><span id='bc_0_10MN' class='comment-actions secondary-text' kind='m'><a kind='i' href='javascript:;' target='_self' o='r'>Reply</a><span class='item-control blog-admin pid-867456114'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=8294397616940202077'>Delete</a></span></span></div><div id='bc_0_10BR' class='comment-replies'><span id='bc_0_10b+seedUH2wD' kind='d'><div id='bc_0_9T' class='comment-thread inline-thread' kind='t'   t='0' u='0'><span id='bc_0_9TT' class='thread-toggle thread-expanded' kind='g'><span id='bc_0_9TA' class='thread-arrow'></span><span id='bc_0_9TN' class='thread-count'><span id='bc_0_9TNT' style='display: none;'></span><span id='bc_0_9TNU' style='display: none;'></span><a href='javascript:;' target='_self'>Replies</a><div id='bc_0_9TD' class='thread-dropContainer thread-expanded'><span class='thread-drop'></span></div></span></span><ol id='bc_0_9TC' class='thread-chrome thread-expanded'><div><li id='bc_0_9B' class='comment' kind='b'><div class='avatar-image-container'><img src='http://img1.blogblog.com/img/anon36.png'></img></div><div id='c3310038926539598114' class='comment-block'><div id='bc_0_9M' class='comment-header' kind='m'><cite class='user'><a rel='nofollow' href='http://www.blogger.com/profile/11410503547692026880'>Rick Karcich</a></cite><span class='icon user'></span><span class='datetime secondary-text'><a rel='nofollow' href='http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html?showComment=1424781635521#c3310038926539598114'>February 24, 2015 4:40 AM</a></span></div><p id='bc_0_9MC' class='comment-content'>apologies, in my post above, i meant to link to this article, https://securityblog.redhat.com/2014/09/24/bash-specially-crafted-environment-variables-code-injection-attack/<br /><br />thanks again for any insights...<br /><br /></p><span id='bc_0_9MN' class='comment-actions secondary-text' kind='m'><span class='item-control blog-admin pid-867456114'><a o='d' target='_self' href='http://www.blogger.com/delete-comment.g?blogID=383549007228220941&amp;postID=3310038926539598114'>Delete</a></span></span></div><div id='bc_0_9BR' class='comment-replies'></div><div id='bc_0_9B_box' class='comment-replybox-single'></div></li></div><div id='bc_0_9I' class='continue' kind='ci'><a href='javascript:;' target='_self'>Reply</a></div></ol><div id='bc_0_9T_box' class='comment-replybox-thread'></div></div></span></div><div id='bc_0_10B_box' class='comment-replybox-single'></div></li></ol><div id='bc_0_11I' class='continue' kind='ci'><a href='javascript:;' target='_self'>Add comment</a></div><div id='bc_0_11T_box' class='comment-replybox-thread'></div><div id='bc_0_11L' class='loadmore loaded' kind='rb'><a href='javascript:;' target='_self'>Load more...</a></div></div></div></div>
+</div>
+</div>
+<p class='comment-footer'>
+<div class='comment-form'>
+<a name='comment-form'></a>
+<p>
+</p>
+<a href='https://www.blogger.com/comment-iframe.g?blogID=383549007228220941&postID=9002736326250250918' id='comment-editor-src'></a>
+<iframe allowtransparency='true' class='blogger-iframe-colorize blogger-comment-from-post' frameborder='0' height='410' id='comment-editor' name='comment-editor' src='' width='100%'></iframe>
+<script type="text/javascript" src="https://www.blogger.com/static/v1/jsbin/283761757-comment_from_post_iframe.js"></script>
+<script type='text/javascript'>
+      BLOG_CMT_createIframe('https://www.blogger.com/rpc_relay.html');
+    </script>
+</div>
+</p>
+<div id='backlinks-container'>
+<div id='Blog1_backlinks-container'>
+</div>
+</div>
+</div>
+</div>
+
+        </div></div>
+      
+<!-- google_ad_section_end -->
+</div>
+<div class='blog-pager' id='blog-pager'>
+<span id='blog-pager-newer-link'>
+<a class='blog-pager-newer-link' href='http://lcamtuf.blogspot.ru/2014/10/fuzzing-binaries-without-execve.html' id='Blog1_blog-pager-newer-link' title='Newer Post'>Newer Post</a>
+</span>
+<span id='blog-pager-older-link'>
+<a class='blog-pager-older-link' href='http://lcamtuf.blogspot.ru/2014/09/bash-bug-apply-unofficial-patch-now.html' id='Blog1_blog-pager-older-link' title='Older Post'>Older Post</a>
+</span>
+<a class='home-link' href='http://lcamtuf.blogspot.ru/'>Home</a>
+</div>
+<div class='clear'></div>
+<div class='post-feeds'>
+<div class='feed-links'>
+Subscribe to:
+<a class='feed-link' href='http://lcamtuf.blogspot.com/feeds/9002736326250250918/comments/default' target='_blank' type='application/atom+xml'>Post Comments (Atom)</a>
+</div>
+</div>
+<script type="text/javascript">window.___gcfg = {'lang': 'en'};</script>
+</div></div>
+</div>
+<div id='sidebar-wrapper'>
+<div class='sidebar section' id='sidebar'></div>
+</div>
+<!-- spacer for skins that want sidebar and main to be the same height-->
+<div class='clear'>&#160;</div>
+</div>
+<!-- end content-wrapper -->
+</div></div>
+<!-- end outer-wrapper -->
+<script type='text/javascript'>
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type='text/javascript'>
+try {
+var pageTracker = _gat._getTracker("UA-8211351-4");
+pageTracker._trackPageview();
+} catch(err) {}</script>
+<script type="text/javascript">
+if (window.jstiming) window.jstiming.load.tick('widgetJsBefore');
+</script><script type="text/javascript" src="https://www.blogger.com/static/v1/widgets/2076720373-widgets.js"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+<script type='text/javascript'>
+if (typeof(BLOG_attachCsiOnload) != 'undefined' && BLOG_attachCsiOnload != null) { window['blogger_templates_experiment_id'] = "templatesV1";window['blogger_blog_id'] = '383549007228220941';BLOG_attachCsiOnload('item_'); }_WidgetManager._Init('//www.blogger.com/rearrange?blogID\x3d383549007228220941','//lcamtuf.blogspot.ru/2014/10/bash-bug-how-we-finally-cracked.html','383549007228220941');
+_WidgetManager._SetDataContext([{'name': 'blog', 'data': {'blogId': '383549007228220941', 'bloggerUrl': 'http://www.blogger.com', 'title': 'lcamtuf\47s blog', 'pageType': 'item', 'postId': '9002736326250250918', 'url': 'http://lcamtuf.blogspot.ru/2014/10/bash-bug-how-we-finally-cracked.html', 'canonicalUrl': 'http://lcamtuf.blogspot.com/2014/10/bash-bug-how-we-finally-cracked.html', 'canonicalHomepageUrl': 'http://lcamtuf.blogspot.com/', 'homepageUrl': 'http://lcamtuf.blogspot.ru/', 'blogspotFaviconUrl': 'http://lcamtuf.blogspot.ru/favicon.ico', 'enabledCommentProfileImages': false, 'adultContent': false, 'disableAdSenseWidget': false, 'analyticsAccountNumber': '', 'searchLabel': '', 'searchQuery': '', 'pageName': 'Bash bug: the other two RCEs, or how we chipped away at the original fix (CVE-2014-6277 and \04778)', 'pageTitle': 'lcamtuf\47s blog: Bash bug: the other two RCEs, or how we chipped away at the original fix (CVE-2014-6277 and \04778)', 'encoding': 'UTF-8', 'locale': 'en', 'localeUnderscoreDelimited': 'en', 'isPrivate': false, 'isMobile': false, 'isMobileRequest': false, 'mobileClass': '', 'isPrivateBlog': false, 'languageDirection': 'ltr', 'feedLinks': '\74link rel\75\42alternate\42 type\75\42application/atom+xml\42 title\75\42lcamtuf\46#39;s blog - Atom\42 href\75\42http://lcamtuf.blogspot.com/feeds/posts/default\42 /\76\n\74link rel\75\42alternate\42 type\75\42application/rss+xml\42 title\75\42lcamtuf\46#39;s blog - RSS\42 href\75\42http://lcamtuf.blogspot.com/feeds/posts/default?alt\75rss\42 /\76\n\74link rel\75\42service.post\42 type\75\42application/atom+xml\42 title\75\42lcamtuf\46#39;s blog - Atom\42 href\75\42http://www.blogger.com/feeds/383549007228220941/posts/default\42 /\76\n\n\74link rel\75\42alternate\42 type\75\42application/atom+xml\42 title\75\42lcamtuf\46#39;s blog - Atom\42 href\75\42http://lcamtuf.blogspot.com/feeds/9002736326250250918/comments/default\42 /\76\n', 'meTag': '', 'openIdOpTag': '', 'latencyHeadScript': '\74script type\75\42text/javascript\42\76(function() { var b\75window,f\75\42chrome\42,g\75\42tick\42,k\75\42jstiming\42;(function(){function d(a){this.t\75{};this.tick\75function(a,d,c){var e\75void 0!\75c?c:(new Date).getTime();this.t[a]\75[e,d];if(void 0\75\75c)try{b.console.timeStamp(\42CSI/\42+a)}catch(h){}};this[g](\42start\42,null,a)}var a;b.performance\46\46(a\75b.performance.timing);var n\75a?new d(a.responseStart):new d;b.jstiming\75{Timer:d,load:n};if(a){var c\75a.navigationStart,h\75a.responseStart;0\74c\46\46h\76\75c\46\46(b[k].srt\75h-c)}if(a){var e\75b[k].load;0\74c\46\46h\76\75c\46\46(e[g](\42_wtsrt\42,void 0,c),e[g](\42wtsrt_\42,\42_wtsrt\42,h),e[g](\42tbsd_\42,\42wtsrt_\42))}try{a\75null,\nb[f]\46\46b[f].csi\46\46(a\75Math.floor(b[f].csi().pageT),e\46\0460\74c\46\46(e[g](\42_tbnd\42,void 0,b[f].csi().startE),e[g](\42tbnd_\42,\42_tbnd\42,c))),null\75\75a\46\46b.gtbExternal\46\46(a\75b.gtbExternal.pageT()),null\75\75a\46\46b.external\46\46(a\75b.external.pageT,e\46\0460\74c\46\46(e[g](\42_tbnd\42,void 0,b.external.startE),e[g](\42tbnd_\42,\42_tbnd\42,c))),a\46\46(b[k].pt\75a)}catch(p){}})();b.tickAboveFold\75function(d){var a\0750;if(d.offsetParent){do a+\75d.offsetTop;while(d\75d.offsetParent)}d\75a;750\76\75d\46\46b[k].load[g](\42aft\42)};var l\75!1;function m(){l||(l\75!0,b[k].load[g](\42firstScrollTime\42))}b.addEventListener?b.addEventListener(\42scroll\42,m,!1):b.attachEvent(\42onscroll\42,m);\n })();\74/script\076', 'mobileHeadScript': '', 'view': '', 'dynamicViewsCommentsSrc': '//www.blogblog.com/dynamicviews/4224c15c4e7c9321/js/comments.js', 'dynamicViewsScriptSrc': '//www.blogblog.com/dynamicviews/cda3ddef07a85452', 'plusOneApiSrc': 'https://apis.google.com/js/plusone.js', 'sf': 'n', 'tf': ''}}, {'name': 'skin', 'data': {'vars': {'mainTextColor': '#111111', 'sidebarTitleColor': '#ffc069', 'titleColor': '#215670', 'descriptionColor': '#acb877', 'postTitleColor': '#32527A', 'mainBgColor': '#ffffff', 'titleBgColor': '#eeeeee', 'sidebarLinkColor': '#999999', 'mainLinkColor': '#006699', 'titleFont': 'normal bold 323% Verdana, sans-serif', 'postFooterColor': '#444444', 'bodyFont': 'normal normal 100% Trebuchet, Trebuchet MS, Arial, sans-serif', 'descriptionFont': 'normal normal 80% Lucida Grande,Verdana, Arial, Sans-serif', 'dateHeaderColor': '#999999', 'descriptionBgColor': '#ffffff', 'endSide': 'right', 'startSide': 'left'}, 'override': ''}}, {'name': 'view', 'data': {'classic': {'name': 'classic', 'url': '?view\75classic'}, 'flipcard': {'name': 'flipcard', 'url': '?view\75flipcard'}, 'magazine': {'name': 'magazine', 'url': '?view\75magazine'}, 'mosaic': {'name': 'mosaic', 'url': '?view\75mosaic'}, 'sidebar': {'name': 'sidebar', 'url': '?view\75sidebar'}, 'snapshot': {'name': 'snapshot', 'url': '?view\75snapshot'}, 'timeslide': {'name': 'timeslide', 'url': '?view\75timeslide'}}}]);
+_WidgetManager._RegisterWidget('_NavbarView', new _WidgetInfo('Navbar1', 'navbar', null, document.getElementById('Navbar1'), {}, 'displayModeFull'));
+_WidgetManager._RegisterWidget('_HeaderView', new _WidgetInfo('Header1', 'header', null, document.getElementById('Header1'), {}, 'displayModeFull'));
+_WidgetManager._RegisterWidget('_BlogView', new _WidgetInfo('Blog1', 'main', null, document.getElementById('Blog1'), {'cmtInteractionsEnabled': false, 'lightboxEnabled': true, 'lightboxModuleUrl': 'https://www.blogger.com/static/v1/jsbin/2627710972-lbx.js', 'lightboxCssUrl': 'https://www.blogger.com/static/v1/v-css/2392111094-lightbox_bundle.css'}, 'displayModeFull'));
+</script>
+</body>
+</html>
